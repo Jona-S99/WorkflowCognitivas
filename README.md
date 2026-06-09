@@ -115,3 +115,12 @@ flowchart TD
 - El flujo espera al menos un documento cargado en `app/docs/transcripciones/` y un CSV en `app/docs/csv/`.
 - El contexto del estudio se envía desde la interfaz antes de iniciar la codificación.
 - Si un archivo ya existe con el mismo hash, la carga se rechaza como duplicado.
+
+## Licencia y autoría
+
+Este proyecto fue creado originalmente por Jona-S99.
+
+El código se distribuye bajo licencia MIT. Puedes usarlo, copiarlo,
+modificarlo y distribuirlo, siempre que conserves el aviso de copyright y la
+licencia incluida en este repositorio. Revisa `LICENSE` y `NOTICE` para más
+detalle.
