@@ -1,0 +1,147 @@
+/* ============================================
+   PALETA GLOBAL
+   ============================================ */
+:root {
+  --color-bg: #F6F1E8;
+  --color-bg-secondary: #EFE7D8;
+  --color-text: #1E1E1A;
+  --color-accent: #7C3AED;
+  --color-accent-soft: #C4B5FD;
+  --color-button: #111827;
+  --color-success: #2F855A;
+  --color-border: rgba(30, 30, 26, 0.14);
+  --color-surface: rgba(255, 252, 245, 0.82);
+  --color-muted: rgba(30, 30, 26, 0.68);
+}
+
+html,
+body {
+  background: linear-gradient(180deg, var(--color-bg) 0%, var(--color-bg-secondary) 100%);
+  color: var(--color-text);
+}
+
+body {
+  min-height: 100vh;
+}
+
+/* ============================================
+   NAVBAR - Componentes de navegación
+   ============================================ */
+.navbar {
+  background-color: rgba(246, 241, 232, 0.9);
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: 0 2px 18px rgba(30, 30, 26, 0.06);
+  padding: 1rem 0;
+  backdrop-filter: blur(10px);
+}
+
+.navbar-brand img {
+  height: 50px;
+  width: auto;
+}
+
+.nav-link {
+  color: var(--color-text) !important;
+  font-weight: 500;
+  padding: 0.5rem 1rem !important;
+  transition: color 0.3s ease;
+}
+
+.nav-link:hover {
+  color: var(--color-accent) !important;
+}
+
+.nav-link.active {
+  color: var(--color-accent) !important;
+  border-bottom: 2px solid var(--color-accent);
+}
+
+/* ============================================
+   UTILIDADES GLOBALES
+   ============================================ */
+.icon-box {
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-soft) 100%);
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.icon-box i {
+  color: white;
+  font-size: 1.8rem;
+}
+
+.btn-primary {
+  background-color: var(--color-button);
+  border-color: var(--color-button);
+  color: #fff;
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active {
+  background-color: #0b1220;
+  border-color: #0b1220;
+  color: #fff;
+}
+
+.btn-outline-secondary {
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+.btn-outline-secondary:hover,
+.btn-outline-secondary:focus,
+.btn-outline-secondary:active {
+  background-color: var(--color-bg-secondary);
+  color: var(--color-text);
+  border-color: var(--color-text);
+}
+
+.btn-outline-danger {
+  color: var(--color-accent);
+  border-color: var(--color-accent-soft);
+}
+
+.btn-outline-danger:hover,
+.btn-outline-danger:focus,
+.btn-outline-danger:active {
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #fff;
+}
+
+.form-control,
+.form-select,
+textarea {
+  background-color: rgba(255, 252, 245, 0.9);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+.form-control:focus,
+.form-select:focus,
+textarea:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 .2rem rgba(124, 58, 237, 0.16);
+}
+
+.text-muted {
+  color: var(--color-muted) !important;
+}
+
+.text-success {
+  color: var(--color-success) !important;
+}
+
+.progress {
+  background-color: rgba(30, 30, 26, 0.08);
+}
+
+.progress-bar {
+  background-color: var(--color-accent);
+}

@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ titulo_page }}</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@500;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="{{ url_for('static', path='css/main.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', path='css/upload.css') }}">
+</head>
+
+<body>
+  <nav class="navbar navbar-expand-lg navbar-light sticky-top config-navbar">
+    <div class="container">
+      <a class="navbar-brand config-brand" href="/">
+        <img src="{{ url_for('static', path='img/logo.png') }}" alt="">
+        <span>Workflow Cognitivas</span>
+      </a>
+
+      <div class="navbar-nav-row">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="/">Inicio</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/workflow">Flujo</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <section class="upload-hero">
+    <div class="container">
+      <p class="config-kicker">Configuración de codificación</p>
+      <div class="config-hero-grid">
+        <div>
+          <h1>Prepara el workflow</h1>
+          <p class="lead">Carga los insumos, define el contexto del estudio y monitorea la codificación desde una sola vista.</p>
+        </div>
+
+        <div class="config-step-rail" aria-label="Pasos de configuración">
+          <div class="config-step-pill active">
+            <span>01</span>
+            <p>Archivos</p>
+          </div>
+          <div class="config-step-pill">
+            <span>02</span>
+            <p>Contexto</p>
+          </div>
+          <div class="config-step-pill">
+            <span>03</span>
+            <p>Logs</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="upload-section">
+    <div class="container">
+      <div class="config-step-heading">
+        <span>01</span>
+        <div>
+          <h2>Archivos de entrada</h2>
+          <p>Sube las transcripciones y la pauta CSV que usarán los agentes para construir la matriz.</p>
+        </div>
+      </div>
+
+      <div class="row g-4">
+        <div class="col-lg-6">
+          <div class="upload-card h-100">
+            <div class="upload-header">
+              <div class="icon-box">
+                <i class="bi bi-file-earmark-text"></i>
+              </div>
+              <div>
+                <h3>Transcripciones</h3>
+                <p>PDF, DOC o DOCX. Puedes cargar múltiples archivos.</p>
+              </div>
+            </div>
+
+            <div class="upload-dropzone" id="dropzone-document">
+              <input type="file" id="file-document" accept=".doc,.docx,.pdf" multiple hidden>
+              <i class="bi bi-cloud-upload upload-icon"></i>
+              <p class="mb-2"><strong>Arrastra tus transcripciones aquí</strong></p>
+              <p class="text-muted small mb-3">o selecciona archivos desde tu equipo</p>
+              <button type="button" class="btn btn-primary" onclick="document.getElementById('file-document').click()">
+                <i class="bi bi-folder2-open me-2"></i>Seleccionar archivos
+              </button>
+              <p class="text-muted small mt-3 mb-0">Formatos permitidos: DOC, DOCX y PDF</p>
+            </div>
+
+            <div class="upload-file-list" id="file-list-document" style="display: none;"></div>
+
+            <div id="clear-all-documents" style="display: none;">
+              <button type="button" class="btn btn-outline-danger btn-sm w-100 mt-3" onclick="clearFile('document')">
+                <i class="bi bi-trash me-2"></i>Limpiar todos los archivos
+              </button>
+            </div>
+
+            <div class="upload-message" id="message-document" style="display: none;"></div>
+          </div>
+        </div>
+
+        <div class="col-lg-6">
+          <div class="upload-card h-100">
+            <div class="upload-header">
+              <div class="icon-box">
+                <i class="bi bi-filetype-csv"></i>
+              </div>
+              <div>
+                <h3>Pauta CSV</h3>
+                <p>Archivo de codificación que guía el análisis.</p>
+              </div>
+            </div>
+
+            <div class="upload-dropzone" id="dropzone-csv">
+              <input type="file" id="file-csv" accept=".csv" hidden>
+              <i class="bi bi-cloud-upload upload-icon"></i>
+              <p class="mb-2"><strong>Arrastra la pauta aquí</strong></p>
+              <p class="text-muted small mb-3">o selecciona un archivo CSV</p>
+              <button type="button" class="btn btn-primary" onclick="document.getElementById('file-csv').click()">
+                <i class="bi bi-folder2-open me-2"></i>Seleccionar CSV
+              </button>
+            </div>
+
+            <div class="upload-file-info" id="file-info-csv" style="display: none;">
+              <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center">
+                  <i class="bi bi-filetype-csv text-success me-3 fs-4"></i>
+                  <div>
+                    <p class="mb-0 fw-bold" id="filename-csv"></p>
+                    <p class="mb-0 small text-muted" id="filesize-csv"></p>
+                  </div>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearFile('csv')">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="upload-message" id="message-csv" style="display: none;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="config-step-heading">
+        <span>02</span>
+        <div>
+          <h2>Contexto del estudio</h2>
+          <p>Describe objetivo, población, alcance y criterios relevantes para orientar la codificación.</p>
+        </div>
+      </div>
+
+      <div class="row mt-4">
+        <div class="col-12">
+          <div class="upload-card">
+            <div class="upload-header mb-3">
+              <div class="icon-box">
+                <i class="bi bi-journal-text"></i>
+              </div>
+              <div>
+                <h3>Contexto para los agentes</h3>
+                <p>Una descripción clara mejora la consistencia de la matriz final.</p>
+              </div>
+            </div>
+
+            <label for="study-context" class="form-label fw-semibold">Instrucciones y alcance del análisis</label>
+            <textarea id="study-context" class="form-control context-textbox" placeholder="Ejemplo: objetivo del estudio, población entrevistada, alcance, criterios de análisis, sesgos esperados, etc."></textarea>
+            <p class="context-hint" id="context-validation-msg">
+              Para habilitar "Codificar" debes subir al menos una transcripción, un CSV y completar este contexto.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="config-step-heading">
+        <span>03</span>
+        <div>
+          <h2>Codificación y logs</h2>
+          <p>Ejecuta el workflow y revisa el avance por archivo junto con los eventos del proceso.</p>
+        </div>
+      </div>
+
+      <div class="row mt-4" id="coding-progress-section" style="display: none;">
+        <div class="col-12">
+          <div class="upload-card">
+            <div class="upload-header mb-3">
+              <div class="icon-box">
+                <i class="bi bi-activity"></i>
+              </div>
+              <div>
+                <h3>Estado del workflow</h3>
+                <p>Monitorea progreso, archivos procesados y eventos técnicos.</p>
+              </div>
+            </div>
+
+            <div class="coding-panel-header">
+              <p class="mb-0 fw-semibold">Progreso</p>
+              <p class="mb-0" id="coding-counter">0/0</p>
+            </div>
+
+            <div class="progress mb-3" role="progressbar" aria-label="Progreso de codificación" aria-valuemin="0" aria-valuemax="100">
+              <div class="progress-bar" id="coding-progress-bar" style="width: 0%">0%</div>
+            </div>
+
+            <div class="row g-4">
+              <div class="col-lg-6">
+                <p class="coding-log-title">Archivos</p>
+                <ul class="coding-log list-unstyled" id="coding-progress-log">
+                  <li class="text-muted" id="coding-empty-state">Aún no hay avances de codificación para mostrar.</li>
+                </ul>
+              </div>
+
+              <div class="col-lg-6">
+                <p class="coding-log-title">Eventos del proceso</p>
+                <ul class="coding-log list-unstyled" id="coding-events-log">
+                  <li class="text-muted" id="coding-events-empty-state">Aún no hay eventos.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row mt-5">
+        <div class="col-12">
+          <div class="step-navigation">
+            <button type="button" class="btn btn-outline-secondary" onclick="goToHome()">
+              <i class="bi bi-arrow-left me-2"></i>Volver al inicio
+            </button>
+            <button type="button" class="btn btn-primary" id="btn-codificar" onclick="startCoding()" disabled>
+              <i class="bi bi-play-fill me-2"></i>Codificar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    let uploadedFiles = {
+      document: [],
+      csv: null
+    };
+    let workflowPollTimer = null;
+    let workflowRunning = false;
+
+    function formatFileSize(bytes) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = String(text);
+      return div.innerHTML;
+    }
+
+    ['document', 'csv'].forEach(type => {
+      const fileInput = document.getElementById(`file-${type}`);
+      const dropzone = document.getElementById(`dropzone-${type}`);
+
+      dropzone.addEventListener('click', (e) => {
+        if (e.target.tagName !== 'BUTTON') fileInput.click();
+      });
+
+      fileInput.addEventListener('change', (e) => {
+        if (type === 'document') {
+          handleMultipleFiles(e.target.files);
+        } else {
+          handleCsvFile(e.target.files[0]);
+        }
+      });
+
+      dropzone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropzone.classList.add('dragover');
+      });
+
+      dropzone.addEventListener('dragleave', () => {
+        dropzone.classList.remove('dragover');
+      });
+
+      dropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('dragover');
+        if (type === 'document') {
+          handleMultipleFiles(e.dataTransfer.files);
+        } else {
+          handleCsvFile(e.dataTransfer.files[0]);
+        }
+      });
+    });
+
+    function showMessage(type, message, status) {
+      const messageEl = document.getElementById(`message-${type}`);
+      messageEl.style.display = 'block';
+      messageEl.className = 'upload-message';
+
+      if (status === 'success') {
+        messageEl.classList.add('success');
+        messageEl.innerHTML = `<i class="bi bi-check-circle-fill me-2"></i>${message}`;
+      } else if (status === 'error') {
+        messageEl.classList.add('error');
+        messageEl.innerHTML = `<i class="bi bi-exclamation-circle-fill me-2"></i>${message}`;
+      } else {
+        messageEl.classList.add('loading');
+        messageEl.innerHTML = `<div class="spinner-border spinner-border-sm me-2"></div>${message}`;
+      }
+    }
+
+    function addUploadedDocument(fileName) {
+      if (!fileName) return;
+      if (!uploadedFiles.document.includes(fileName)) {
+        uploadedFiles.document.push(fileName);
+      }
+    }
+
+    function checkCanCode() {
+      const hasDocuments = uploadedFiles.document.length > 0;
+      const hasCsv = !!uploadedFiles.csv;
+      const hasContext = document.getElementById('study-context').value.trim().length > 0;
+      const canCode = hasDocuments && hasCsv && hasContext;
+
+      document.getElementById('btn-codificar').disabled = workflowRunning || !canCode;
+      document.getElementById('context-validation-msg').style.color = hasContext ? 'var(--color-success)' : 'var(--color-muted)';
+    }
+
+    function clearFile(type) {
+      document.getElementById(`file-${type}`).value = '';
+      document.getElementById(`dropzone-${type}`).style.display = 'flex';
+      document.getElementById(`message-${type}`).style.display = 'none';
+
+      if (type === 'document') {
+        document.getElementById('file-list-document').style.display = 'none';
+        document.getElementById('file-list-document').innerHTML = '';
+        document.getElementById('clear-all-documents').style.display = 'none';
+        uploadedFiles.document = [];
+      } else {
+        document.getElementById('file-info-csv').style.display = 'none';
+        uploadedFiles.csv = null;
+      }
+
+      checkCanCode();
+    }
+
+    function removeFileFromList(fileId, fileName = null, wasSuccessful = false) {
+      const fileItem = document.getElementById(fileId);
+      if (fileItem) fileItem.remove();
+
+      if (wasSuccessful && fileName) {
+        const idx = uploadedFiles.document.indexOf(fileName);
+        if (idx > -1) uploadedFiles.document.splice(idx, 1);
+      }
+
+      if (document.getElementById('file-list-document').children.length === 0) {
+        clearFile('document');
+      }
+
+      checkCanCode();
+    }
+
+    async function uploadSingleDocument(file) {
+      const fileId = `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const fileList = document.getElementById('file-list-document');
+
+      const fileItem = document.createElement('div');
+      fileItem.className = 'upload-file-item';
+      fileItem.id = fileId;
+      fileItem.innerHTML = `
+        <div class="d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center flex-grow-1">
+            <i class="bi bi-file-earmark-text text-primary me-3 fs-4"></i>
+            <div class="flex-grow-1">
+              <p class="mb-0 fw-bold">${escapeHtml(file.name)}</p>
+              <p class="mb-0 small text-muted">${formatFileSize(file.size)}</p>
+            </div>
+            <div class="upload-status">
+              <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+            </div>
+          </div>
+        </div>
+      `;
+      fileList.appendChild(fileItem);
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const response = await fetch('/upload/document', { method: 'POST', body: formData });
+        const result = await response.json();
+
+        if (result.success) {
+          const storedFilename = result.filename || file.name;
+          const escaped = storedFilename.replace(/'/g, "\\'");
+
+          const statusDiv = fileItem.querySelector('.upload-status');
+          statusDiv.innerHTML = `
+            <i class="bi bi-check-circle-fill text-success fs-5 me-2"></i>
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFileFromList('${fileId}', '${escaped}', true)">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          `;
+
+          addUploadedDocument(storedFilename);
+          checkCanCode();
+        } else {
+          const statusDiv = fileItem.querySelector('.upload-status');
+          statusDiv.innerHTML = `
+            <i class="bi bi-x-circle-fill text-danger fs-5 me-2"></i>
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFileFromList('${fileId}')">
+              <i class="bi bi-trash"></i>
+            </button>
+          `;
+
+          const fileInfo = fileItem.querySelector('.flex-grow-1');
+          fileInfo.innerHTML += `<p class="mb-0 small text-danger mt-1">${escapeHtml(result.message || 'Error al subir')}</p>`;
+        }
+      } catch (error) {
+        const statusDiv = fileItem.querySelector('.upload-status');
+        statusDiv.innerHTML = `
+          <i class="bi bi-x-circle-fill text-danger fs-5 me-2"></i>
+          <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFileFromList('${fileId}')">
+            <i class="bi bi-trash"></i>
+          </button>
+        `;
+      }
+    }
+
+    function handleMultipleFiles(files) {
+      if (!files || files.length === 0) return;
+      document.getElementById('dropzone-document').style.display = 'none';
+      document.getElementById('file-list-document').style.display = 'block';
+      document.getElementById('clear-all-documents').style.display = 'block';
+      document.getElementById('message-document').style.display = 'none';
+
+      Array.from(files).forEach(file => uploadSingleDocument(file));
+    }
+
+    async function uploadCsv() {
+      const fileInput = document.getElementById('file-csv');
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      showMessage('csv', 'Subiendo archivo...', 'loading');
+
+      try {
+        const response = await fetch('/upload/csv', { method: 'POST', body: formData });
+        const result = await response.json();
+
+        if (result.success) {
+          uploadedFiles.csv = result.filename || file.name;
+          showMessage('csv', result.message, 'success');
+        } else {
+          showMessage('csv', result.message || 'Error al subir CSV', 'error');
+        }
+      } catch (error) {
+        showMessage('csv', 'Error al subir CSV', 'error');
+      }
+
+      checkCanCode();
+    }
+
+    function handleCsvFile(file) {
+      if (!file) return;
+
+      document.getElementById('dropzone-csv').style.display = 'none';
+      document.getElementById('file-info-csv').style.display = 'block';
+      document.getElementById('filename-csv').textContent = file.name;
+      document.getElementById('filesize-csv').textContent = formatFileSize(file.size);
+      document.getElementById('message-csv').style.display = 'none';
+
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      document.getElementById('file-csv').files = dt.files;
+
+      uploadCsv();
+    }
+
+    function applyRestoredDocuments(documents) {
+      const dropzone = document.getElementById('dropzone-document');
+      const fileList = document.getElementById('file-list-document');
+      const clearBtn = document.getElementById('clear-all-documents');
+
+      fileList.innerHTML = '';
+      uploadedFiles.document = [];
+
+      if (!Array.isArray(documents) || documents.length === 0) {
+        dropzone.style.display = 'flex';
+        fileList.style.display = 'none';
+        clearBtn.style.display = 'none';
+        return;
+      }
+
+      dropzone.style.display = 'none';
+      fileList.style.display = 'block';
+      clearBtn.style.display = 'block';
+
+      documents.forEach((doc) => {
+        addUploadedDocument(doc.name);
+
+        const fileId = `file-restored-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const escaped = String(doc.name).replace(/'/g, "\\'");
+        const item = document.createElement('div');
+        item.className = 'upload-file-item';
+        item.id = fileId;
+        item.innerHTML = `
+          <div class="d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center flex-grow-1">
+              <i class="bi bi-file-earmark-text text-primary me-3 fs-4"></i>
+              <div class="flex-grow-1">
+                <p class="mb-0 fw-bold">${escapeHtml(doc.name)}</p>
+                <p class="mb-0 small text-muted">${formatFileSize(Number(doc.size || 0))}</p>
+              </div>
+              <div class="upload-status">
+                <i class="bi bi-check-circle-fill text-success fs-5 me-2"></i>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFileFromList('${fileId}', '${escaped}', true)">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+        fileList.appendChild(item);
+      });
+    }
+
+    function applyRestoredCsv(csvFile) {
+      const dropzone = document.getElementById('dropzone-csv');
+      const fileInfo = document.getElementById('file-info-csv');
+
+      if (!csvFile || !csvFile.name) {
+        uploadedFiles.csv = null;
+        dropzone.style.display = 'flex';
+        fileInfo.style.display = 'none';
+        return;
+      }
+
+      uploadedFiles.csv = csvFile.name;
+      dropzone.style.display = 'none';
+      fileInfo.style.display = 'block';
+      document.getElementById('filename-csv').textContent = csvFile.name;
+      document.getElementById('filesize-csv').textContent = formatFileSize(Number(csvFile.size || 0));
+    }
+
+    async function loadUploadState() {
+      try {
+        const response = await fetch('/upload/state');
+        const result = await response.json();
+
+        if (!result.success) return;
+        applyRestoredDocuments(result.documents || []);
+        applyRestoredCsv(result.csv || null);
+      } catch (error) {
+        // Estado inicial si falla
+      }
+    }
+
+    function goToHome() {
+      window.location.href = '/';
+    }
+
+    function appendProgressLog(message, iconClass = 'bi-hourglass-split text-secondary') {
+      const log = document.getElementById('coding-events-log');
+      const empty = document.getElementById('coding-events-empty-state');
+      if (empty) {
+        empty.remove();
+      }
+
+      const item = document.createElement('li');
+      item.innerHTML = `<i class="bi ${iconClass} me-2"></i>${escapeHtml(message)}`;
+      log.appendChild(item);
+    }
+
+    function setCodingProgress(percent, current, total) {
+      const bar = document.getElementById('coding-progress-bar');
+      const counter = document.getElementById('coding-counter');
+
+      bar.style.width = `${percent}%`;
+      bar.textContent = `${percent}%`;
+      counter.textContent = `${current}/${total}`;
+    }
+
+    function renderWorkflowFiles(files) {
+      const log = document.getElementById('coding-progress-log');
+      log.innerHTML = '';
+
+      if (!Array.isArray(files) || files.length === 0) {
+        const empty = document.createElement('li');
+        empty.id = 'coding-empty-state';
+        empty.className = 'text-muted';
+        empty.textContent = 'Aún no hay avances de codificación para mostrar.';
+        log.appendChild(empty);
+        return;
+      }
+
+      files.forEach((file) => {
+        const status = file.status || 'pending';
+        let iconClass = 'bi-hourglass-split text-secondary';
+        if (status === 'processing') iconClass = 'bi-arrow-repeat text-primary';
+        if (status === 'completed') iconClass = 'bi-check-circle-fill text-success';
+        if (status === 'error') iconClass = 'bi-x-circle-fill text-danger';
+
+        const item = document.createElement('li');
+        const errorText = file.error ? ` - ${escapeHtml(file.error)}` : '';
+        item.innerHTML = `<i class="bi ${iconClass} me-2"></i><strong>${escapeHtml(file.name)}</strong> - ${escapeHtml(status)}${errorText}`;
+        log.appendChild(item);
+      });
+    }
+
+    function renderWorkflowLogs(logs) {
+      const log = document.getElementById('coding-events-log');
+      log.innerHTML = '';
+
+      if (!Array.isArray(logs) || logs.length === 0) {
+        const empty = document.createElement('li');
+        empty.id = 'coding-events-empty-state';
+        empty.className = 'text-muted';
+        empty.textContent = 'Aún no hay eventos.';
+        log.appendChild(empty);
+        return;
+      }
+
+      logs.forEach((entry) => {
+        const level = entry.level || 'info';
+        const ts = entry.timestamp || '';
+        const msg = entry.message || '';
+        let iconClass = 'bi-info-circle text-secondary';
+        if (level === 'success') iconClass = 'bi-check-circle-fill text-success';
+        if (level === 'warning') iconClass = 'bi-exclamation-circle-fill text-warning';
+        if (level === 'error') iconClass = 'bi-x-circle-fill text-danger';
+
+        const item = document.createElement('li');
+        item.innerHTML = `<i class="bi ${iconClass} me-2"></i><span class="text-muted">${escapeHtml(ts)}</span> - ${escapeHtml(msg)}`;
+        log.appendChild(item);
+      });
+    }
+
+    function renderWorkflowStatus(statusData) {
+      const summary = statusData.summary || {};
+      const total = Number(summary.total || 0);
+      const processed = Number(summary.processed || 0);
+      const percent = total > 0 ? Math.round((processed / total) * 100) : 0;
+
+      document.getElementById('coding-progress-section').style.display = 'block';
+      setCodingProgress(percent, processed, total);
+      renderWorkflowFiles(statusData.files || []);
+      renderWorkflowLogs(statusData.logs || []);
+    }
+
+    function stopWorkflowPolling() {
+      if (workflowPollTimer) {
+        clearInterval(workflowPollTimer);
+        workflowPollTimer = null;
+      }
+    }
+
+    async function pollWorkflowStatus() {
+      try {
+        const response = await fetch('/workflow/status');
+        const result = await response.json();
+        if (!result.success) return;
+
+        renderWorkflowStatus(result);
+        workflowRunning = !!result.running;
+
+        if (!result.running) {
+          workflowRunning = false;
+          stopWorkflowPolling();
+          checkCanCode();
+        }
+      } catch (error) {
+        workflowRunning = false;
+        stopWorkflowPolling();
+        checkCanCode();
+        appendProgressLog('No se pudo obtener el estado del workflow.', 'bi-exclamation-triangle-fill text-danger');
+      }
+    }
+
+    function startWorkflowPolling() {
+      stopWorkflowPolling();
+      workflowPollTimer = setInterval(pollWorkflowStatus, 1500);
+    }
+
+    async function startCoding() {
+      if (document.getElementById('btn-codificar').disabled) return;
+
+      document.getElementById('coding-progress-section').style.display = 'block';
+      workflowRunning = true;
+      checkCanCode();
+
+      const contextoEstudio = document.getElementById('study-context').value.trim();
+      const totalDocs = uploadedFiles.document.length || 1;
+      setCodingProgress(5, 0, totalDocs);
+      appendProgressLog('Iniciando workflow de codificación...', 'bi-play-circle-fill text-primary');
+
+      try {
+        const response = await fetch('/workflow/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contexto_estudio: contextoEstudio })
+        });
+        const result = await response.json();
+
+        if (!result.success) {
+          workflowRunning = false;
+          checkCanCode();
+          appendProgressLog(result.message || 'No se pudo iniciar la codificación.', 'bi-exclamation-triangle-fill text-danger');
+          return;
+        }
+
+        appendProgressLog('Workflow iniciado correctamente.', 'bi-check-circle-fill text-success');
+        await pollWorkflowStatus();
+        startWorkflowPolling();
+      } catch (error) {
+        workflowRunning = false;
+        checkCanCode();
+        appendProgressLog('Error de conexión al iniciar la codificación.', 'bi-exclamation-triangle-fill text-danger');
+      }
+    }
+
+    async function initializeConfigPage() {
+      await loadUploadState();
+      document.getElementById('study-context').addEventListener('input', checkCanCode);
+      checkCanCode();
+      await pollWorkflowStatus();
+      if (workflowRunning) {
+        startWorkflowPolling();
+      }
+    }
+
+    initializeConfigPage();
+  </script>
+</body>
+
+</html>
