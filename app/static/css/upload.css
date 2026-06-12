@@ -650,6 +650,63 @@ body {
   background: rgba(255, 252, 245, 0.62);
 }
 
+.upload-file-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.upload-file-name {
+  overflow-wrap: anywhere;
+}
+
+.upload-status {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  min-width: 148px;
+  text-align: right;
+}
+
+.upload-state-label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid rgba(23, 32, 47, 0.12);
+  border-radius: 6px;
+  background: rgba(255, 252, 245, 0.82);
+  color: var(--config-ink);
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.upload-state-label.loaded {
+  border-color: rgba(47, 133, 90, 0.24);
+  background: rgba(47, 133, 90, 0.1);
+}
+
+.upload-state-label.duplicate,
+.upload-state-label.invalid,
+.upload-state-label.error {
+  border-color: rgba(180, 55, 55, 0.22);
+  background: rgba(180, 55, 55, 0.08);
+}
+
+.upload-file-note {
+  max-width: 230px;
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  line-height: 1.25;
+}
+
+.min-width-0 {
+  min-width: 0;
+}
+
 .context-textbox {
   min-height: 190px;
   border: 1px solid var(--config-line);
@@ -785,6 +842,22 @@ body {
 
   .upload-card {
     padding: 1.35rem;
+  }
+
+  .upload-file-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .upload-status {
+    justify-content: flex-start;
+    min-width: 0;
+    width: 100%;
+    text-align: left;
+  }
+
+  .upload-file-note {
+    max-width: 100%;
   }
 
   .step-navigation {

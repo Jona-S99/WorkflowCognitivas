@@ -1,7 +1,7 @@
 from pathlib import Path
 import hashlib
 
-from fastapi import APIRouter, File, UploadFile
+from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from app.api.runtime import (
     ALLOWED_DOC_EXTENSIONS,
@@ -13,6 +13,53 @@ from app.api.runtime import (
 
 
 router = APIRouter(prefix="/upload")
+
+
+def _safe_uploaded_path(directory: Path, filename: str) -> Path:
+    """Resuelve un archivo subido sin permitir escapes fuera del directorio."""
+    directory.mkdir(parents=True, exist_ok=True)
+
+    # El nombre llega desde la URL, por eso se descartan separadores o rutas
+    # completas. Así una petición maliciosa no puede borrar archivos externos.
+    clean_name = Path(filename).name
+    candidate = (directory / clean_name).resolve()
+    directory_root = directory.resolve()
+
+    if candidate.parent != directory_root:
+        raise HTTPException(status_code=400, detail="Nombre de archivo inválido.")
+
+    return candidate
+
+
+def _delete_file_if_allowed(
+    directory: Path,
+    filename: str,
+    allowed_extensions: set[str],
+) -> dict:
+    """Borra un archivo persistido solo si pertenece al tipo esperado."""
+    file_path = _safe_uploaded_path(directory, filename)
+
+    if file_path.suffix.lower() not in allowed_extensions:
+        raise HTTPException(status_code=400, detail="Formato de archivo inválido.")
+
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail="Archivo no encontrado.")
+
+    file_path.unlink()
+    return {"success": True, "message": f"Archivo '{file_path.name}' eliminado."}
+
+
+def _delete_files_in_directory(directory: Path, allowed_extensions: set[str]) -> int:
+    """Borra archivos de trabajo conocidos y deja intacto cualquier otro tipo."""
+    deleted = 0
+    directory.mkdir(parents=True, exist_ok=True)
+
+    for file_path in directory.iterdir():
+        if file_path.is_file() and file_path.suffix.lower() in allowed_extensions:
+            file_path.unlink()
+            deleted += 1
+
+    return deleted
 
 
 @router.get("/state")
@@ -40,6 +87,12 @@ async def upload_document(file: UploadFile = File(...)):
     try:
         DOCS_DIR.mkdir(parents=True, exist_ok=True)
         contents = await file.read()
+
+        if not contents:
+            return {
+                "success": False,
+                "message": "El archivo está vacío y no se puede cargar.",
+            }
 
         file_hash = hashlib.sha256(contents).hexdigest()
         hash_short = file_hash[:8]
@@ -86,21 +139,22 @@ async def upload_csv(file: UploadFile = File(...)):
         CSV_DIR.mkdir(parents=True, exist_ok=True)
         contents = await file.read()
 
-        file_hash = hashlib.sha256(contents).hexdigest()
-        hash_short = file_hash[:8]
-
-        existing_files = list(CSV_DIR.glob(f"*_{hash_short}.csv"))
-        if existing_files:
+        if not contents:
             return {
                 "success": False,
-                "message": f"⚠️ Archivo CSV duplicado. Ya existe: {existing_files[0].name}",
-                "duplicate": True,
-                "existing_file": existing_files[0].name,
+                "message": "El archivo CSV está vacío y no se puede cargar.",
             }
+
+        file_hash = hashlib.sha256(contents).hexdigest()
+        hash_short = file_hash[:8]
 
         clean_name = clean_filename_stem(file.filename)
         safe_filename = f"{clean_name}_{hash_short}.csv"
         file_path = CSV_DIR / safe_filename
+
+        # Regla de negocio: la pauta es única. Recién después de validar el CSV
+        # se reemplazan pautas previas para evitar perder la actual por error.
+        replaced_count = _delete_files_in_directory(CSV_DIR, {".csv"})
 
         with open(file_path, "wb") as f:
             f.write(contents)
@@ -113,6 +167,7 @@ async def upload_csv(file: UploadFile = File(...)):
             "size": len(contents),
             "path": str(file_path),
             "hash": file_hash,
+            "replaced_count": replaced_count,
         }
 
     except Exception as e:
@@ -120,3 +175,28 @@ async def upload_csv(file: UploadFile = File(...)):
             "success": False,
             "message": f"Error al guardar el archivo CSV: {str(e)}",
         }
+
+
+@router.delete("/document/{filename}")
+async def delete_document(filename: str):
+    return _delete_file_if_allowed(DOCS_DIR, filename, ALLOWED_DOC_EXTENSIONS)
+
+
+@router.delete("/documents")
+async def delete_documents():
+    deleted_count = _delete_files_in_directory(DOCS_DIR, ALLOWED_DOC_EXTENSIONS)
+    return {
+        "success": True,
+        "message": f"Se eliminaron {deleted_count} transcripción(es).",
+        "deleted_count": deleted_count,
+    }
+
+
+@router.delete("/csv")
+async def delete_csv():
+    deleted_count = _delete_files_in_directory(CSV_DIR, {".csv"})
+    return {
+        "success": True,
+        "message": f"Se eliminaron {deleted_count} pauta(s) CSV.",
+        "deleted_count": deleted_count,
+    }

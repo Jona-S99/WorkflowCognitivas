@@ -102,7 +102,7 @@
             <div class="upload-file-list" id="file-list-document" style="display: none;"></div>
 
             <div id="clear-all-documents" style="display: none;">
-              <button type="button" class="btn btn-outline-danger btn-sm w-100 mt-3" onclick="clearFile('document')">
+              <button type="button" class="btn btn-outline-danger btn-sm w-100 mt-3" id="btn-clear-documents" onclick="deleteAllDocuments()">
                 <i class="bi bi-trash me-2"></i>Limpiar todos los archivos
               </button>
             </div>
@@ -131,6 +131,7 @@
               <button type="button" class="btn btn-primary" onclick="document.getElementById('file-csv').click()">
                 <i class="bi bi-folder2-open me-2"></i>Seleccionar CSV
               </button>
+              <p class="text-muted small mt-3 mb-0">Solo habrá 1 pauta activa. Una nueva carga reemplaza la anterior.</p>
             </div>
 
             <div class="upload-file-info" id="file-info-csv" style="display: none;">
@@ -142,7 +143,7 @@
                     <p class="mb-0 small text-muted" id="filesize-csv"></p>
                   </div>
                 </div>
-                <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearFile('csv')">
+                <button type="button" class="btn btn-sm btn-outline-danger" id="btn-delete-csv" onclick="deleteActiveCsv()">
                   <i class="bi bi-x-lg"></i>
                 </button>
               </div>
@@ -256,6 +257,7 @@
     };
     let workflowPollTimer = null;
     let workflowRunning = false;
+    const allowedDocumentExtensions = ['.doc', '.docx', '.pdf'];
 
     function formatFileSize(bytes) {
       if (bytes === 0) return '0 Bytes';
@@ -269,6 +271,11 @@
       const div = document.createElement('div');
       div.textContent = String(text);
       return div.innerHTML;
+    }
+
+    function getFileExtension(fileName) {
+      const dotIndex = String(fileName).lastIndexOf('.');
+      return dotIndex >= 0 ? String(fileName).slice(dotIndex).toLowerCase() : '';
     }
 
     ['document', 'csv'].forEach(type => {
@@ -314,14 +321,90 @@
 
       if (status === 'success') {
         messageEl.classList.add('success');
-        messageEl.innerHTML = `<i class="bi bi-check-circle-fill me-2"></i>${message}`;
+        messageEl.innerHTML = `<i class="bi bi-check-circle-fill me-2"></i>${escapeHtml(message)}`;
       } else if (status === 'error') {
         messageEl.classList.add('error');
-        messageEl.innerHTML = `<i class="bi bi-exclamation-circle-fill me-2"></i>${message}`;
+        messageEl.innerHTML = `<i class="bi bi-exclamation-circle-fill me-2"></i>${escapeHtml(message)}`;
       } else {
         messageEl.classList.add('loading');
-        messageEl.innerHTML = `<div class="spinner-border spinner-border-sm me-2"></div>${message}`;
+        messageEl.innerHTML = `<div class="spinner-border spinner-border-sm me-2"></div>${escapeHtml(message)}`;
       }
+    }
+
+    function hideMessage(type) {
+      document.getElementById(`message-${type}`).style.display = 'none';
+    }
+
+    function showDocumentList() {
+      document.getElementById('dropzone-document').style.display = 'none';
+      document.getElementById('file-list-document').style.display = 'block';
+      document.getElementById('clear-all-documents').style.display = 'block';
+    }
+
+    function renderFileStatus(status, message = '') {
+      const statusConfig = {
+        uploading: ['bi-arrow-repeat text-primary', 'Subiendo'],
+        loaded: ['bi-check-circle-fill text-success', 'Cargado'],
+        duplicate: ['bi-files text-warning', 'Duplicado'],
+        invalid: ['bi-exclamation-circle-fill text-danger', 'Inválido'],
+        error: ['bi-x-circle-fill text-danger', 'Error'],
+        deleting: ['bi-arrow-repeat text-secondary', 'Borrando']
+      };
+      const [iconClass, label] = statusConfig[status] || statusConfig.error;
+      const detail = message ? `<p class="upload-file-note mb-0">${escapeHtml(message)}</p>` : '';
+
+      return `
+        <span class="upload-state-label ${status}">
+          <i class="bi ${iconClass} me-1"></i>${label}
+        </span>
+        ${detail}
+      `;
+    }
+
+    function createDocumentItem(fileName, size, status, message = '', storedFilename = null) {
+      const fileId = `file-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      const transientDeleteButton = ['invalid', 'duplicate', 'error'].includes(status)
+        ? `<button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="removeTransientFileItem('${fileId}')" aria-label="Quitar ${escapeHtml(fileName)}">
+             <i class="bi bi-trash"></i>
+           </button>`
+        : '';
+      const fileItem = document.createElement('div');
+      fileItem.className = 'upload-file-item';
+      fileItem.id = fileId;
+      fileItem.dataset.filename = storedFilename || '';
+      fileItem.innerHTML = `
+        <div class="upload-file-row">
+          <div class="d-flex align-items-center flex-grow-1 min-width-0">
+            <i class="bi bi-file-earmark-text text-primary me-3 fs-4"></i>
+            <div class="flex-grow-1 min-width-0">
+              <p class="mb-0 fw-bold upload-file-name">${escapeHtml(fileName)}</p>
+              <p class="mb-0 small text-muted">${formatFileSize(Number(size || 0))}</p>
+            </div>
+          </div>
+          <div class="upload-status">${renderFileStatus(status, message)}${transientDeleteButton}</div>
+        </div>
+      `;
+
+      return fileItem;
+    }
+
+    function setDocumentItemState(fileItem, status, message = '', storedFilename = null) {
+      if (storedFilename) {
+        fileItem.dataset.filename = storedFilename;
+      }
+
+      const statusDiv = fileItem.querySelector('.upload-status');
+      const deleteButton = storedFilename && status === 'loaded'
+        ? `<button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="deleteUploadedDocument('${encodeURIComponent(storedFilename)}', '${fileItem.id}')" aria-label="Eliminar ${escapeHtml(storedFilename)}">
+             <i class="bi bi-x-lg"></i>
+           </button>`
+        : ['duplicate', 'invalid', 'error'].includes(status)
+          ? `<button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="removeTransientFileItem('${fileItem.id}')" aria-label="Quitar archivo">
+               <i class="bi bi-trash"></i>
+             </button>`
+        : '';
+
+      statusDiv.innerHTML = `${renderFileStatus(status, message)}${deleteButton}`;
     }
 
     function addUploadedDocument(fileName) {
@@ -341,61 +424,42 @@
       document.getElementById('context-validation-msg').style.color = hasContext ? 'var(--color-success)' : 'var(--color-muted)';
     }
 
-    function clearFile(type) {
-      document.getElementById(`file-${type}`).value = '';
-      document.getElementById(`dropzone-${type}`).style.display = 'flex';
-      document.getElementById(`message-${type}`).style.display = 'none';
-
-      if (type === 'document') {
-        document.getElementById('file-list-document').style.display = 'none';
-        document.getElementById('file-list-document').innerHTML = '';
-        document.getElementById('clear-all-documents').style.display = 'none';
-        uploadedFiles.document = [];
-      } else {
-        document.getElementById('file-info-csv').style.display = 'none';
-        uploadedFiles.csv = null;
-      }
-
-      checkCanCode();
-    }
-
-    function removeFileFromList(fileId, fileName = null, wasSuccessful = false) {
+    function removeTransientFileItem(fileId) {
       const fileItem = document.getElementById(fileId);
       if (fileItem) fileItem.remove();
 
-      if (wasSuccessful && fileName) {
-        const idx = uploadedFiles.document.indexOf(fileName);
-        if (idx > -1) uploadedFiles.document.splice(idx, 1);
-      }
-
       if (document.getElementById('file-list-document').children.length === 0) {
-        clearFile('document');
+        applyRestoredDocuments([]);
       }
 
       checkCanCode();
     }
 
-    async function uploadSingleDocument(file) {
-      const fileId = `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      const fileList = document.getElementById('file-list-document');
+    function validateDocumentFile(file, seenSelectionKeys) {
+      const extension = getFileExtension(file.name);
+      const selectionKey = `${file.name.toLowerCase()}-${file.size}-${file.lastModified}`;
 
-      const fileItem = document.createElement('div');
-      fileItem.className = 'upload-file-item';
-      fileItem.id = fileId;
-      fileItem.innerHTML = `
-        <div class="d-flex align-items-center justify-content-between">
-          <div class="d-flex align-items-center flex-grow-1">
-            <i class="bi bi-file-earmark-text text-primary me-3 fs-4"></i>
-            <div class="flex-grow-1">
-              <p class="mb-0 fw-bold">${escapeHtml(file.name)}</p>
-              <p class="mb-0 small text-muted">${formatFileSize(file.size)}</p>
-            </div>
-            <div class="upload-status">
-              <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
-            </div>
-          </div>
-        </div>
-      `;
+      if (!allowedDocumentExtensions.includes(extension)) {
+        return `Formato no permitido. Usa ${allowedDocumentExtensions.join(', ')}.`;
+      }
+
+      if (file.size === 0) {
+        return 'El archivo está vacío.';
+      }
+
+      // Esta deduplicación evita enviar dos veces el mismo archivo en una sola
+      // selección. Los duplicados ya guardados se detectan por hash en backend.
+      if (seenSelectionKeys.has(selectionKey)) {
+        return 'Este archivo ya está incluido en esta selección.';
+      }
+
+      seenSelectionKeys.add(selectionKey);
+      return null;
+    }
+
+    async function uploadSingleDocument(file) {
+      const fileList = document.getElementById('file-list-document');
+      const fileItem = createDocumentItem(file.name, file.size, 'uploading');
       fileList.appendChild(fileItem);
 
       const formData = new FormData();
@@ -407,56 +471,61 @@
 
         if (result.success) {
           const storedFilename = result.filename || file.name;
-          const escaped = storedFilename.replace(/'/g, "\\'");
-
-          const statusDiv = fileItem.querySelector('.upload-status');
-          statusDiv.innerHTML = `
-            <i class="bi bi-check-circle-fill text-success fs-5 me-2"></i>
-            <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFileFromList('${fileId}', '${escaped}', true)">
-              <i class="bi bi-x-lg"></i>
-            </button>
-          `;
-
+          setDocumentItemState(fileItem, 'loaded', 'Listo para codificar.', storedFilename);
           addUploadedDocument(storedFilename);
           checkCanCode();
         } else {
-          const statusDiv = fileItem.querySelector('.upload-status');
-          statusDiv.innerHTML = `
-            <i class="bi bi-x-circle-fill text-danger fs-5 me-2"></i>
-            <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFileFromList('${fileId}')">
-              <i class="bi bi-trash"></i>
-            </button>
-          `;
-
-          const fileInfo = fileItem.querySelector('.flex-grow-1');
-          fileInfo.innerHTML += `<p class="mb-0 small text-danger mt-1">${escapeHtml(result.message || 'Error al subir')}</p>`;
+          const status = result.duplicate ? 'duplicate' : 'error';
+          setDocumentItemState(fileItem, status, result.message || 'Error al subir');
         }
       } catch (error) {
-        const statusDiv = fileItem.querySelector('.upload-status');
-        statusDiv.innerHTML = `
-          <i class="bi bi-x-circle-fill text-danger fs-5 me-2"></i>
-          <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFileFromList('${fileId}')">
-            <i class="bi bi-trash"></i>
-          </button>
-        `;
+        setDocumentItemState(fileItem, 'error', 'Error de conexión al subir.');
+      }
+
+      return fileItem;
+    }
+
+    async function handleMultipleFiles(files) {
+      if (!files || files.length === 0) return;
+      const fileList = document.getElementById('file-list-document');
+      const seenSelectionKeys = new Set();
+      const uploadTasks = [];
+
+      showDocumentList();
+      hideMessage('document');
+
+      Array.from(files).forEach((file) => {
+        const validationMessage = validateDocumentFile(file, seenSelectionKeys);
+
+        if (validationMessage) {
+          fileList.appendChild(createDocumentItem(file.name, file.size, 'invalid', validationMessage));
+          return;
+        }
+
+        uploadTasks.push(uploadSingleDocument(file));
+      });
+
+      if (uploadTasks.length > 0) {
+        await Promise.all(uploadTasks);
+        await syncUploadTruth();
       }
     }
 
-    function handleMultipleFiles(files) {
-      if (!files || files.length === 0) return;
-      document.getElementById('dropzone-document').style.display = 'none';
-      document.getElementById('file-list-document').style.display = 'block';
-      document.getElementById('clear-all-documents').style.display = 'block';
-      document.getElementById('message-document').style.display = 'none';
+    function validateCsvFile(file) {
+      if (getFileExtension(file.name) !== '.csv') {
+        return 'Solo se aceptan archivos CSV.';
+      }
 
-      Array.from(files).forEach(file => uploadSingleDocument(file));
+      if (file.size === 0) {
+        return 'El archivo CSV está vacío.';
+      }
+
+      return null;
     }
 
-    async function uploadCsv() {
-      const fileInput = document.getElementById('file-csv');
-      const file = fileInput.files[0];
+    async function uploadCsv(file) {
       if (!file) return;
-
+      const fileInput = document.getElementById('file-csv');
       const formData = new FormData();
       formData.append('file', file);
 
@@ -467,32 +536,118 @@
         const result = await response.json();
 
         if (result.success) {
-          uploadedFiles.csv = result.filename || file.name;
-          showMessage('csv', result.message, 'success');
+          showMessage('csv', `${result.message}. Pauta activa actualizada.`, 'success');
+          // La pauta es única: después de subir, se restaura desde backend para
+          // reflejar el nombre persistido y cualquier reemplazo automático.
+          await refreshUploadState();
         } else {
           showMessage('csv', result.message || 'Error al subir CSV', 'error');
+          await refreshUploadState();
         }
       } catch (error) {
         showMessage('csv', 'Error al subir CSV', 'error');
+        await refreshUploadState();
       }
 
+      fileInput.value = '';
       checkCanCode();
     }
 
     function handleCsvFile(file) {
       if (!file) return;
+      const validationMessage = validateCsvFile(file);
+
+      if (validationMessage) {
+        showMessage('csv', validationMessage, 'error');
+        document.getElementById('file-csv').value = '';
+        return;
+      }
 
       document.getElementById('dropzone-csv').style.display = 'none';
       document.getElementById('file-info-csv').style.display = 'block';
       document.getElementById('filename-csv').textContent = file.name;
       document.getElementById('filesize-csv').textContent = formatFileSize(file.size);
-      document.getElementById('message-csv').style.display = 'none';
+      hideMessage('csv');
 
       const dt = new DataTransfer();
       dt.items.add(file);
       document.getElementById('file-csv').files = dt.files;
 
-      uploadCsv();
+      uploadCsv(file);
+    }
+
+    async function deleteUploadedDocument(encodedFilename, fileId) {
+      const fileItem = document.getElementById(fileId);
+      const filename = decodeURIComponent(encodedFilename);
+
+      if (fileItem) {
+        setDocumentItemState(fileItem, 'deleting', 'Eliminando del servidor...', filename);
+      }
+
+      try {
+        const response = await fetch(`/upload/document/${encodedFilename}`, { method: 'DELETE' });
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.detail || result.message || 'No se pudo eliminar la transcripción.');
+        }
+
+        showMessage('document', result.message || 'Transcripción eliminada.', 'success');
+        await refreshUploadState();
+      } catch (error) {
+        if (fileItem) {
+          setDocumentItemState(fileItem, 'loaded', error.message || 'No se pudo eliminar.', filename);
+        }
+        showMessage('document', error.message || 'No se pudo eliminar la transcripción.', 'error');
+      }
+    }
+
+    async function deleteAllDocuments() {
+      const button = document.getElementById('btn-clear-documents');
+      button.disabled = true;
+      button.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Limpiando archivos';
+      showMessage('document', 'Eliminando transcripciones...', 'loading');
+
+      try {
+        const response = await fetch('/upload/documents', { method: 'DELETE' });
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.detail || result.message || 'No se pudieron eliminar las transcripciones.');
+        }
+
+        showMessage('document', result.message || 'Transcripciones eliminadas.', 'success');
+        await refreshUploadState();
+      } catch (error) {
+        showMessage('document', error.message || 'No se pudieron eliminar las transcripciones.', 'error');
+      } finally {
+        button.disabled = false;
+        button.innerHTML = '<i class="bi bi-trash me-2"></i>Limpiar todos los archivos';
+      }
+    }
+
+    async function deleteActiveCsv() {
+      const button = document.getElementById('btn-delete-csv');
+      button.disabled = true;
+      button.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+      showMessage('csv', 'Eliminando pauta CSV...', 'loading');
+
+      try {
+        const response = await fetch('/upload/csv', { method: 'DELETE' });
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.detail || result.message || 'No se pudo eliminar la pauta CSV.');
+        }
+
+        showMessage('csv', result.message || 'Pauta CSV eliminada.', 'success');
+        await refreshUploadState();
+      } catch (error) {
+        showMessage('csv', error.message || 'No se pudo eliminar la pauta CSV.', 'error');
+      } finally {
+        button.disabled = false;
+        button.innerHTML = '<i class="bi bi-x-lg"></i>';
+      }
     }
 
     function applyRestoredDocuments(documents) {
@@ -507,6 +662,8 @@
         dropzone.style.display = 'flex';
         fileList.style.display = 'none';
         clearBtn.style.display = 'none';
+        document.getElementById('file-document').value = '';
+        checkCanCode();
         return;
       }
 
@@ -518,21 +675,22 @@
         addUploadedDocument(doc.name);
 
         const fileId = `file-restored-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        const escaped = String(doc.name).replace(/'/g, "\\'");
+        const encoded = encodeURIComponent(doc.name);
         const item = document.createElement('div');
         item.className = 'upload-file-item';
         item.id = fileId;
+        item.dataset.filename = doc.name;
         item.innerHTML = `
-          <div class="d-flex align-items-center justify-content-between">
-            <div class="d-flex align-items-center flex-grow-1">
+          <div class="upload-file-row">
+            <div class="d-flex align-items-center flex-grow-1 min-width-0">
               <i class="bi bi-file-earmark-text text-primary me-3 fs-4"></i>
-              <div class="flex-grow-1">
-                <p class="mb-0 fw-bold">${escapeHtml(doc.name)}</p>
+              <div class="flex-grow-1 min-width-0">
+                <p class="mb-0 fw-bold upload-file-name">${escapeHtml(doc.name)}</p>
                 <p class="mb-0 small text-muted">${formatFileSize(Number(doc.size || 0))}</p>
               </div>
               <div class="upload-status">
-                <i class="bi bi-check-circle-fill text-success fs-5 me-2"></i>
-                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFileFromList('${fileId}', '${escaped}', true)">
+                ${renderFileStatus('loaded', 'Listo para codificar.')}
+                <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="deleteUploadedDocument('${encoded}', '${fileId}')" aria-label="Eliminar ${escapeHtml(doc.name)}">
                   <i class="bi bi-x-lg"></i>
                 </button>
               </div>
@@ -541,6 +699,8 @@
         `;
         fileList.appendChild(item);
       });
+
+      checkCanCode();
     }
 
     function applyRestoredCsv(csvFile) {
@@ -551,6 +711,8 @@
         uploadedFiles.csv = null;
         dropzone.style.display = 'flex';
         fileInfo.style.display = 'none';
+        document.getElementById('file-csv').value = '';
+        checkCanCode();
         return;
       }
 
@@ -559,20 +721,42 @@
       fileInfo.style.display = 'block';
       document.getElementById('filename-csv').textContent = csvFile.name;
       document.getElementById('filesize-csv').textContent = formatFileSize(Number(csvFile.size || 0));
+      checkCanCode();
     }
 
-    async function loadUploadState() {
+    async function refreshUploadState() {
       try {
         const response = await fetch('/upload/state');
         const result = await response.json();
 
         if (!result.success) return;
+        // El disco es la fuente de verdad: cada operación de carga o borrado
+        // vuelve a pintar desde backend para que nada eliminado siga contando.
         applyRestoredDocuments(result.documents || []);
         applyRestoredCsv(result.csv || null);
+        checkCanCode();
       } catch (error) {
-        // Estado inicial si falla
+        showMessage('document', 'No se pudo sincronizar el estado de archivos.', 'error');
       }
     }
+
+    async function syncUploadTruth() {
+      try {
+        const response = await fetch('/upload/state');
+        const result = await response.json();
+        if (!result.success) return;
+
+        uploadedFiles.document = Array.isArray(result.documents)
+          ? result.documents.map((doc) => doc.name)
+          : [];
+        uploadedFiles.csv = result.csv && result.csv.name ? result.csv.name : null;
+        checkCanCode();
+      } catch (error) {
+        showMessage('document', 'No se pudo sincronizar el estado de archivos.', 'error');
+      }
+    }
+
+    const loadUploadState = refreshUploadState;
 
     function goToHome() {
       window.location.href = '/';
