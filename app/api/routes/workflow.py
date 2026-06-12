@@ -12,6 +12,7 @@ from app.api.runtime import (
     WORKFLOW_STATE,
     append_workflow_log,
     list_files,
+    remove_stale_markdown_files,
     run_workflow_job,
     snapshot_workflow_state,
 )
@@ -30,6 +31,15 @@ async def workflow_start(payload: dict = Body(default=None)):
             "success": False,
             "message": "Debes ingresar el contexto del estudio antes de codificar.",
         }
+
+    # Los Markdown son derivados de las transcripciones. Si una carga se borró,
+    # el workflow no debe arrancar con restos de conversiones anteriores.
+    removed_markdown = remove_stale_markdown_files()
+    if removed_markdown:
+        append_workflow_log(
+            f"Se eliminaron {removed_markdown} Markdown huérfano(s) antes de codificar.",
+            "warning",
+        )
 
     docs = list_files(DOCS_DIR, ALLOWED_DOC_EXTENSIONS)
     csv_files = list_files(CSV_DIR, {".csv"})

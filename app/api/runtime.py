@@ -9,6 +9,7 @@ templates = Jinja2Templates(directory="app/templates")
 
 DOCS_DIR = Path("app/docs/transcripciones")
 CSV_DIR = Path("app/docs/csv")
+MARKDOWN_DIR = Path("app/docs/markdown")
 ALLOWED_DOC_EXTENSIONS = {".doc", ".docx", ".pdf"}
 
 WORKFLOW_LOCK = threading.Lock()
@@ -61,6 +62,30 @@ def list_files(directory: Path, allowed_extensions: set[str]) -> list[dict]:
 
     items.sort(key=lambda x: x["modified_at"], reverse=True)
     return items
+
+
+def remove_stale_markdown_files() -> int:
+    """Elimina Markdown huérfanos cuando ya no existe su transcripción fuente."""
+    DOCS_DIR.mkdir(parents=True, exist_ok=True)
+    MARKDOWN_DIR.mkdir(parents=True, exist_ok=True)
+
+    active_document_stems = {
+        file_path.stem
+        for file_path in DOCS_DIR.iterdir()
+        if file_path.is_file() and file_path.suffix.lower() in ALLOWED_DOC_EXTENSIONS
+    }
+    deleted = 0
+
+    for markdown_path in MARKDOWN_DIR.iterdir():
+        if (
+            markdown_path.is_file()
+            and markdown_path.suffix.lower() == ".md"
+            and markdown_path.stem not in active_document_stems
+        ):
+            markdown_path.unlink()
+            deleted += 1
+
+    return deleted
 
 
 def snapshot_workflow_state() -> dict:

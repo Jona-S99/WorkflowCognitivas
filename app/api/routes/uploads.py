@@ -7,6 +7,7 @@ from app.api.runtime import (
     ALLOWED_DOC_EXTENSIONS,
     CSV_DIR,
     DOCS_DIR,
+    MARKDOWN_DIR,
     clean_filename_stem,
     list_files,
 )
@@ -60,6 +61,17 @@ def _delete_files_in_directory(directory: Path, allowed_extensions: set[str]) ->
             deleted += 1
 
     return deleted
+
+
+def _delete_markdown_for_document(document_path: Path) -> bool:
+    """Borra el Markdown derivado de una transcripción si ya existe."""
+    markdown_path = MARKDOWN_DIR / f"{document_path.stem}.md"
+
+    if markdown_path.exists() and markdown_path.is_file():
+        markdown_path.unlink()
+        return True
+
+    return False
 
 
 @router.get("/state")
@@ -179,16 +191,21 @@ async def upload_csv(file: UploadFile = File(...)):
 
 @router.delete("/document/{filename}")
 async def delete_document(filename: str):
-    return _delete_file_if_allowed(DOCS_DIR, filename, ALLOWED_DOC_EXTENSIONS)
+    file_path = _safe_uploaded_path(DOCS_DIR, filename)
+    result = _delete_file_if_allowed(DOCS_DIR, filename, ALLOWED_DOC_EXTENSIONS)
+    result["deleted_markdown"] = _delete_markdown_for_document(file_path)
+    return result
 
 
 @router.delete("/documents")
 async def delete_documents():
     deleted_count = _delete_files_in_directory(DOCS_DIR, ALLOWED_DOC_EXTENSIONS)
+    deleted_markdown_count = _delete_files_in_directory(MARKDOWN_DIR, {".md"})
     return {
         "success": True,
         "message": f"Se eliminaron {deleted_count} transcripción(es).",
         "deleted_count": deleted_count,
+        "deleted_markdown_count": deleted_markdown_count,
     }
 
 
