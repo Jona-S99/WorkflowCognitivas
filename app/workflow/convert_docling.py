@@ -51,7 +51,9 @@ def convertir_entrevistas():
         ruta_destino = Path("app/docs/markdown") / f"{nombre_base}.md"
 
         # 3. Exportamos y escribimos el archivo
-        contenido_md = result.document.export_to_markdown()
+        contenido_md = result.document.export_to_markdown(
+            compact_tables=True,
+        )
 
         with open(ruta_destino, "w", encoding="utf-8") as f:
             f.write(contenido_md)
@@ -72,7 +74,9 @@ def convertir_documento(documento_path: str) -> str:
     result = docs_converted[0]
     nombre_base = Path(result.input.file).stem
     ruta_destino = Path("app/docs/markdown") / f"{nombre_base}.md"
-    contenido_md = result.document.export_to_markdown()
+    contenido_md = result.document.export_to_markdown(
+        compact_tables=True,
+    )
 
     with open(ruta_destino, "w", encoding="utf-8") as f:
         f.write(contenido_md)
