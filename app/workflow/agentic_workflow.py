@@ -142,51 +142,111 @@ def extractor_preguntas(state: State) -> dict:
     md_text = state["md_text"]
 
     prompt = f"""
-    # Rol
-    Eres un experto en análisis de transcripciones de entrevistas, con amplia experiencia en la extracción de información relevante.
+# Rol
 
-    # Tarea
-    Lee el MARKDOWN y el CSV.
-    Tu tarea es construir la salida final directamente, sin explicar nada.
+Eres un extractor estricto de información desde transcripciones de entrevistas cognitivas.
 
-    # Formato de salida
-    Debes devolver una estructura con esta forma:
+# Objetivo
+
+Lee el CSV y el MARKDOWN. Devuelve solo los bloques realmente aplicados en la transcripción.
+El CSV solo define ids válidos, orden y agrupación.  
+El MARKDOWN es la única fuente de verdad para decidir qué fue aplicado.
+
+# Normalización
+
+Para buscar ids en el Markdown, considera equivalentes:
+
+- `EC_y29_10b_1`
+- `EC\\_y29\\_10b\\_1`
+
+Es decir, interpreta temporalmente `\\_` como `_` solo para búsqueda.
+En la salida, devuelve siempre el id exactamente como aparece en el CSV.
+
+# Formato de salida
+
+Devuelve exclusivamente JSON válido con esta estructura:
+
+{{
+  "grupos": [
     {{
-        "grupos": [
+      "evaluadas": [
         {{
-            "evaluadas": [
-            {{
-                "id": "...",
-                "pregunta_evaluada": "...",
-                "interaccion_textual": "..."
-            }}
-            ],
-            "sondeos": [
-            {{
-                "id": "...",
-                "pregunta_sondeo": "...",
-                "interaccion_textual": "..."
-            }}
-            ]
+          "id": "...",
+          "pregunta_evaluada": "...",
+          "interaccion_textual": "..."
         }}
-        ]
+      ],
+      "sondeos": [
+        {{
+          "id": "...",
+          "pregunta_sondeo": "...",
+          "interaccion_textual": "..."
+        }}
+      ]
     }}
-    
-    # Reglas obligatorias:
-    1. El orden de los grupos y de los elementos debe seguir EXACTAMENTE el CSV.
-    2. Si un id aparece repetido en el CSV, debes repetirlo en la salida.
-    3. No cambies ids.
-    4. Extrae desde el markdown la pregunta evaluada, la pregunta de sondeo y la interacción textual.
-    5. No inventes contenido.
-    6. No omitas elementos del CSV, aunque falte información en el markdown.
-    7. Si falta información para un id, usa string vacío.
-    8. Devuelve solo JSON válido que cumpla el schema.
+  ]
+}}
 
-    CSV:
-    {csv_text}
+# Reglas obligatorias
 
-    MARKDOWN:
-    {md_text}
+1. Recorre el CSV fila por fila y conserva exactamente su orden.
+2. Dentro de cada fila, conserva el orden de ids en `evaluadas` y `sondeos`.
+3. Incluye solo ids del CSV que aparezcan realmente en el Markdown.
+4. Un id se incluye solo si tiene pregunta y transcripción/interacción textual asociada.
+5. Si un id está en el CSV pero no aparece aplicado en el Markdown, omítelo.
+6. Si una fila completa no tiene ningún id aplicado, omite el grupo completo.
+7. Si una fila está parcialmente aplicada, incluye solo los ids aplicados.
+8. No inventes preguntas, sondeos ni interacciones.
+9. No infieras contenido ausente.
+10. No cambies ids.
+11. No incluyas preguntas del Markdown que no estén en el CSV.
+12. No devuelvas objetos incompletos.
+13. No devuelvas campos vacíos.
+14. No uses markdown ni bloques de código en la respuesta final.
+15. Devuelve solo JSON válido.
+
+# Regla crítica
+
+Está prohibido devolver objetos con strings vacíos.
+
+Incorrecto:
+
+{{
+  "id": "EC_e4a_fb_0",
+  "pregunta_sondeo": "",
+  "interaccion_textual": ""
+}}
+
+Si no puedes completar todos los campos con texto extraído del Markdown, omite ese objeto.
+
+# Extracción
+
+Para ids en `evaluadas`, devuelve:
+
+- `id`
+- `pregunta_evaluada`
+- `interaccion_textual`
+
+Para ids en `sondeos`, devuelve:
+
+- `id`
+- `pregunta_sondeo`
+- `interaccion_textual`
+
+# Casos especiales
+
+Si una pregunta evaluada aparece aplicada pero sus sondeos no, devuelve el grupo con `sondeos: []`
+Si un sondeo aparece aplicado pero la evaluada de esa fila no, devuelve el grupo con `evaluadas: []`.
+Si `evaluadas` y `sondeos` quedarían vacíos, omite el grupo.
+
+
+# CSV
+
+{csv_text}
+
+# MARKDOWN
+
+{md_text}
 """
 
     # Configuracion del primer modelo
